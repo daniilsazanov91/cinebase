@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>CineBase — база фильмов</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="CineBase — база фильмов и сериалов: сюжет, актёры, рейтинги.">
+<meta name="theme-color" content="#0e1117">
+
+<style>
+:root{
+  --bg:#0e1117;
+  --card:#161b22;
+  --text:#e6edf3;
+  --muted:#9da7b3;
+  --accent:#ffcc00;
+}
+
+*{box-sizing:border-box;font-family:Inter,system-ui,sans-serif}
+
+body{margin:0;background:var(--bg);color:var(--text)}
+
+header{
+  padding:20px 32px;
+  border-bottom:1px solid #222;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+header h1{
+  margin:0;
+  font-size:24px;
+  color:var(--accent);
+  cursor:pointer;
+}
+
+header input{
+  width:280px;
+  padding:10px 14px;
+  border-radius:8px;
+  border:none;
+  background:var(--card);
+  color:var(--text);
+}
+
+main{padding:32px;max-width:1300px;margin:auto}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:22px;
+}
+
+.movie{
+  background:var(--card);
+  border-radius:14px;
+  overflow:hidden;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.movie:hover{transform:translateY(-5px)}
+
+.poster{
+  height:300px;
+  background-size:cover;
+  background-position:center;
+}
+
+.info{padding:14px}
+
+.info h3{margin:0 0 6px;font-size:16px}
+.info span{font-size:13px;color:var(--muted)}
+.rating{margin-top:6px;color:var(--accent);font-weight:600}
+
+.page{display:none}
+.page.active{display:block}
+
+.back{color:var(--accent);cursor:pointer;margin-bottom:16px;display:inline-block}
+
+footer{text-align:center;padding:24px;color:var(--muted);font-size:13px}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1 onclick="showHome()">CineBase</h1>
+  <input placeholder="Поиск фильма или актёра" oninput="searchMovies(this.value)">
+</header>
+
+<main>
+
+<!-- ГЛАВНАЯ -->
+<section id="home" class="page active">
+  <h2>Популярные фильмы</h2>
+  <div class="grid" id="grid"></div>
+</section>
+
+<!-- СТРАНИЦА ФИЛЬМА -->
+<section id="moviePage" class="page">
+  <span class="back" onclick="showHome()">← Назад</span>
+  <h1 id="mTitle"></h1>
+  <p id="mMeta"></p>
+  <p id="mDesc"></p>
+  <p><b>Актёры:</b> <span id="mActors"></span></p>
+  <p class="rating" id="mRating"></p>
+</section>
+
+</main>
+
+<footer>
+© 2026 CineBase — информационная база кино. Без просмотра контента.
+</footer>
+
+<script>
+/* ===== ФЕЙК-БД (как movies table) ===== */
+const movies = [
+  {
+    id:1,
+    title:"Интерстеллар",
+    year:2014,
+    genres:"Фантастика, Драма",
+    actors:"Мэттью МакКонахи, Энн Хэтэуэй",
+    description:"Экспедиция за пределы нашей галактики ради выживания человечества.",
+    rating:8.6,
+    poster:"https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg"
+  },
+  {
+    id:2,
+    title:"Начало",
+    year:2010,
+    genres:"Sci-Fi, Триллер",
+    actors:"Леонардо ДиКаприо",
+    description:"Воры проникают в сны, чтобы внедрить идею.",
+    rating:8.7,
+    poster:"https://image.tmdb.org/t/p/w500/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg"
+  },
+  {
+    id:3,
+    title:"Матрица",
+    year:1999,
+    genres:"Боевик, Sci-Fi",
+    actors:"Киану Ривз",
+    description:"Мир — это симуляция.",
+    rating:8.5,
+    poster:"https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg"
+  },
+  {
+    id:4,
+    title:"Джокер",
+    year:2019,
+    genres:"Драма, Криминал",
+    actors:"Хоакин Феникс",
+    description:"История превращения человека в символ хаоса.",
+    rating:8.4,
+    poster:"https://image.tmdb.org/t/p/w500/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg"
+  },
+  {
+    id:5,
+    title:"Бойцовский клуб",
+    year:1999,
+    genres:"Драма",
+    actors:"Брэд Питт, Эдвард Нортон",
+    description:"Подпольный клуб как форма протеста.",
+    rating:8.8,
+    poster:"https://image.tmdb.org/t/p/w500/bptfVGEQuv6vDTIMVCHjJ9Dz8PX.jpg"
+  },
+  {
+    id:6,
+    title:"Темный рыцарь",
+    year:2008,
+    genres:"Боевик, Драма",
+    actors:"Кристиан Бэйл, Хит Леджер",
+    description:"Бэтмен против Джокера.",
+    rating:9.0,
+    poster:"https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg"
+  }
+];
+
+/* ===== РЕНДЕР ===== */
+function render(list){
+  grid.innerHTML="";
+  list.forEach(m=>{
+    grid.innerHTML+=`
+      <div class="movie" onclick="openMovie(${m.id})">
+        <div class="poster" style="background-image:url('${m.poster}')"></div>
+        <div class="info">
+          <h3>${m.title}</h3>
+          <span>${m.year} • ${m.genres}</span>
+          <div class="rating">★ ${m.rating}</div>
+        </div>
+      </div>
+    `;
+  });
+}
+
+render(movies);
+
+/* ===== ПОИСК ===== */
+function searchMovies(q){
+  render(
+    movies.filter(m =>
+      m.title.toLowerCase().includes(q.toLowerCase()) ||
+      m.actors.toLowerCase().includes(q.toLowerCase())
+    )
+  );
+}
+
+/* ===== НАВИГАЦИЯ ===== */
+function showHome(){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  home.classList.add("active");
+}
+
+function openMovie(id){
+  const m = movies.find(x=>x.id===id);
+  mTitle.innerText = m.title;
+  mMeta.innerText = `${m.year} • ${m.genres}`;
+  mDesc.innerText = m.description;
+  mActors.innerText = m.actors;
+  mRating.innerText = "★ " + m.rating;
+
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  moviePage.classList.add("active");
+}
+</script>
+
+</body>
+</html>
